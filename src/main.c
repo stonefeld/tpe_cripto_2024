@@ -1,10 +1,9 @@
 #include <stdio.h>
+#include "args.h"
 
 int main(int argc, char **argv) {
-	printf("There are %d arguments\n", argc);
 
-	for (int i = 0; i < argc; i++)
-		printf("Argument %d: %s\n", i, argv[i]);
+	parse_args(argc, argv);
 
 	return 0;
 }

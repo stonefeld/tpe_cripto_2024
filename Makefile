@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -Werror -std=c99 -pedantic
+CFLAGS=-Wall -Wextra -Werror -std=c99 -pedantic -Iinclude
 
 SRC=$(wildcard src/*.c)
 OBJ=$(SRC:src/%.c=bin/%.o)
