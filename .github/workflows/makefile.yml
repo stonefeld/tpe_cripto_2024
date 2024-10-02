@@ -14,8 +14,5 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: clean
-      run: make clean
-
-    - name: build
+    - name: Build the project
       run: make all
