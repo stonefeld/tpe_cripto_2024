@@ -27,6 +27,5 @@ SortIncludes: 'true'
 SpaceBeforeParens: ControlStatements
 SpacesBeforeTrailingComments: '2'
 TabWidth: '4'
-UseTab: ForIndentation
 
 ...

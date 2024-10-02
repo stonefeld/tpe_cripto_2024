@@ -1,20 +1,19 @@
 #include "args.h"
+
 #include <getopt.h>
-#include <bits/getopt_core.h>
 #include <stdio.h>
-#include <getopt.h>
 #include <stdlib.h>
+#include <string.h>
 
-void parse_args(int argc, char **argv) {
-
+struct args parse_args(int argc, char **argv) {
     int embed_flag = 0;
     int extract_flag = 0;
     char *input_file = NULL;
     char *bitmap_file = NULL;
     char *output_file = NULL;
-    char *steg_algo = NULL;
-    char *encryption_algo = NULL;
-    char *mode = NULL;
+    enum tipo_steg steg_algo = -1;
+    enum tipo_enc encryption_algo = AES128;
+    enum tipo_cb mode = CBC;
     char *password = NULL;
 
     struct option long_options[] = {
@@ -24,42 +23,63 @@ void parse_args(int argc, char **argv) {
         {"out", required_argument, 0, 4},
         {"steg", required_argument, 0, 5},
         {"pass", required_argument, 0, 6},
-        {0, 0, 0, 0}
+        {0, 0, 0, 0},
     };
 
     int opt;
     int option_index = 0;
     while ((opt = getopt_long(argc, argv, "p:a:m:", long_options, &option_index)) != -1) {
         switch (opt) {
-            case 1:
-                embed_flag = 1;
-                break;
-            case 2:
-                extract_flag = 1;
-                break;
-            case 3:
-                input_file = optarg;
-                break;
-            case 'p':
-                bitmap_file = optarg;
-                break;
-            case 4:
-                output_file = optarg;
-                break;
+            case 3: input_file = optarg; break;
+            case 'p': bitmap_file = optarg; break;
+            case 4: output_file = optarg; break;
             case 5:
-                steg_algo = optarg;
+                if (strcmp(optarg, "LSB1") == 0) {
+                    steg_algo = LSB1;
+                } else if (strcmp(optarg, "LSB4") == 0) {
+                    steg_algo = LSB4;
+                } else if (strcmp(optarg, "LSBI") == 0) {
+                    steg_algo = LSBI;
+                } else {
+                    printf("Error: Algoritmo de esteganografía inválido.\n");
+                    exit(EXIT_FAILURE);
+                }
                 break;
             case 'a':
-                encryption_algo = optarg;
+                if (strcmp(optarg, "aes128") == 0) {
+                    encryption_algo = AES128;
+                } else if (strcmp(optarg, "aes192") == 0) {
+                    encryption_algo = AES192;
+                } else if (strcmp(optarg, "aes256") == 0) {
+                    encryption_algo = AES256;
+                } else if (strcmp(optarg, "3des") == 0) {
+                    encryption_algo = DES3;
+                } else {
+                    printf("Error: Algoritmo de cifrado inválido.\n");
+                    exit(EXIT_FAILURE);
+                }
                 break;
             case 'm':
-                mode = optarg;
+                if (strcmp(optarg, "ecb") == 0) {
+                    mode = ECB;
+                } else if (strcmp(optarg, "cfb") == 0) {
+                    mode = CFB;
+                } else if (strcmp(optarg, "ofb") == 0) {
+                    mode = OFB;
+                } else if (strcmp(optarg, "cbc") == 0) {
+                    mode = CBC;
+                } else {
+                    printf("Error: Modo de cifrado inválido.\n");
+                    exit(EXIT_FAILURE);
+                }
                 break;
-            case 6:
-                password = optarg;
-                break;
+            case 6: password = optarg; break;
             case '?':
-                fprintf(stderr, "Uso: %c <--embed || --extract> --in <file> --p <bitmapfile> --out <bitmapfile> --steg <LSB1 | LSB4 | LSBI> [--a <aes128 | aes192 | aes256 | 3des>] [--m <ecb | cfb | ofb | cbc>] [--pass <password>]\n", opt);
+                fprintf(stderr,
+                        "Uso: %c <--embed || --extract> --in <file> --p <bitmapfile> --out <bitmapfile> --steg <LSB1 | "
+                        "LSB4 | LSBI> [--a <aes128 | aes192 | aes256 | 3des>] [--m <ecb | cfb | ofb | cbc>] [--pass "
+                        "<password>]\n",
+                        opt);
                 exit(EXIT_FAILURE);
         }
     }
@@ -74,36 +94,28 @@ void parse_args(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    if (input_file == NULL || bitmap_file == NULL || output_file == NULL || steg_algo == NULL) {
+    if (input_file == NULL || bitmap_file == NULL || output_file == NULL || steg_algo < 0) {
         if (input_file == NULL) {
             fprintf(stderr, "Error: Falta el archivo de entrada.\n");
         } else if (bitmap_file == NULL) {
             fprintf(stderr, "Error: Falta el archivo BMP portador.\n");
         } else if (output_file == NULL) {
             fprintf(stderr, "Error: Falta el archivo BMP de salida.\n");
-        } else if (steg_algo == NULL) {
+        } else if (steg_algo < 0) {
             fprintf(stderr, "Error: Falta el algoritmo de esteganografía.\n");
         }
         exit(EXIT_FAILURE);
     }
 
-    if (embed_flag) {
-        printf("Modo: Embed\n");
-    } else if (extract_flag) {
-        printf("Modo: Extract\n");
-    }
-    printf("Archivo de entrada: %s\n", input_file);
-    printf("Archivo BMP portador: %s\n", bitmap_file);
-    printf("Archivo BMP de salida: %s\n", output_file);
-    printf("Algoritmo de esteganografía: %s\n", steg_algo);
-    if (encryption_algo) {
-        printf("Algoritmo de encriptación: %s\n", encryption_algo);
-    }
-    if (mode) {
-        printf("Modo de encriptación: %s\n", mode);
-    }
-    if (password) {
-        printf("Password: %s\n", password);
-    }
-
+    return (struct args){
+        .embed_flag = embed_flag,
+        .extract_flag = extract_flag,
+        .input_file = input_file,
+        .bitmap_file = bitmap_file,
+        .output_file = output_file,
+        .steg_algo = steg_algo,
+        .encryption_algo = encryption_algo,
+        .mode = mode,
+        .password = password,
+    };
 }
