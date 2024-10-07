@@ -6,15 +6,11 @@
 #include <string.h>
 
 struct args parse_args(int argc, char **argv) {
-    int embed_flag = 0;
-    int extract_flag = 0;
-    char *input_file = NULL;
-    char *bitmap_file = NULL;
-    char *output_file = NULL;
+    int embed_flag = 0, extract_flag = 0;
+    char *input_file, *bitmap_file, *output_file, *password;
     enum tipo_steg steg_algo = -1;
     enum tipo_enc encryption_algo = AES128;
     enum tipo_cb mode = CBC;
-    char *password = NULL;
 
     struct option long_options[] = {
         {"embed", no_argument, &embed_flag, 1},
@@ -30,10 +26,19 @@ struct args parse_args(int argc, char **argv) {
     int option_index = 0;
     while ((opt = getopt_long(argc, argv, "p:a:m:", long_options, &option_index)) != -1) {
         switch (opt) {
-            case 3: input_file = optarg; break;
-            case 'p': bitmap_file = optarg; break;
-            case 4: output_file = optarg; break;
-            case 5:
+            case 3: {
+                input_file = optarg;
+            } break;
+
+            case 'p': {
+                bitmap_file = optarg;
+            } break;
+
+            case 4: {
+                output_file = optarg;
+            } break;
+
+            case 5: {
                 if (strcmp(optarg, "LSB1") == 0) {
                     steg_algo = LSB1;
                 } else if (strcmp(optarg, "LSB4") == 0) {
@@ -44,8 +49,9 @@ struct args parse_args(int argc, char **argv) {
                     printf("Error: Algoritmo de esteganografía inválido.\n");
                     exit(EXIT_FAILURE);
                 }
-                break;
-            case 'a':
+            } break;
+
+            case 'a': {
                 if (strcmp(optarg, "aes128") == 0) {
                     encryption_algo = AES128;
                 } else if (strcmp(optarg, "aes192") == 0) {
@@ -58,8 +64,9 @@ struct args parse_args(int argc, char **argv) {
                     printf("Error: Algoritmo de cifrado inválido.\n");
                     exit(EXIT_FAILURE);
                 }
-                break;
-            case 'm':
+            } break;
+
+            case 'm': {
                 if (strcmp(optarg, "ecb") == 0) {
                     mode = ECB;
                 } else if (strcmp(optarg, "cfb") == 0) {
@@ -72,15 +79,20 @@ struct args parse_args(int argc, char **argv) {
                     printf("Error: Modo de cifrado inválido.\n");
                     exit(EXIT_FAILURE);
                 }
-                break;
-            case 6: password = optarg; break;
-            case '?':
+            } break;
+
+            case 6: {
+                password = optarg;
+            } break;
+
+            case '?': {
                 fprintf(stderr,
                         "Uso: %c <--embed || --extract> --in <file> --p <bitmapfile> --out <bitmapfile> --steg <LSB1 | "
                         "LSB4 | LSBI> [--a <aes128 | aes192 | aes256 | 3des>] [--m <ecb | cfb | ofb | cbc>] [--pass "
                         "<password>]\n",
                         opt);
                 exit(EXIT_FAILURE);
+            } break;
         }
     }
 
@@ -95,21 +107,20 @@ struct args parse_args(int argc, char **argv) {
     }
 
     if (input_file == NULL || bitmap_file == NULL || output_file == NULL || steg_algo < 0) {
-        if (input_file == NULL) {
+        if (input_file == NULL)
             fprintf(stderr, "Error: Falta el archivo de entrada.\n");
-        } else if (bitmap_file == NULL) {
+        else if (bitmap_file == NULL)
             fprintf(stderr, "Error: Falta el archivo BMP portador.\n");
-        } else if (output_file == NULL) {
+        else if (output_file == NULL)
             fprintf(stderr, "Error: Falta el archivo BMP de salida.\n");
-        } else if (steg_algo < 0) {
+        else if (steg_algo < 0)
             fprintf(stderr, "Error: Falta el algoritmo de esteganografía.\n");
-        }
+
         exit(EXIT_FAILURE);
     }
 
     return (struct args){
-        .embed_flag = embed_flag,
-        .extract_flag = extract_flag,
+        .action = embed_flag ? EMBED : EXTRACT,
         .input_file = input_file,
         .bitmap_file = bitmap_file,
         .output_file = output_file,

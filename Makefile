@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -Werror -std=c99 -pedantic -Iinclude
+CFLAGS=-Wall -Wextra -std=c99 -pedantic -Iinclude -g
+LDFLAGS=-fsanitize=address
 
 SRC=$(wildcard src/*.c)
 OBJ=$(SRC:src/%.c=bin/%.o)
@@ -9,7 +10,7 @@ BIN=$(OUT)/stegobmp
 all: dirs $(BIN)
 
 $(BIN): $(OBJ)
-	$(CC) -o $(BIN) $^
+	$(CC) -o $(BIN) $^ $(LDFLAGS)
 
 bin/%.o: src/%.c
 	$(CC) -o $@ -c $< $(CFLAGS)
