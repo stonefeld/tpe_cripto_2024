@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -std=c99 -pedantic -Iinclude -g
-LDFLAGS=-fsanitize=address
+LDFLAGS=-fsanitize=address -lssl -lcrypto
 
 SRC=$(wildcard src/*.c)
 OBJ=$(SRC:src/%.c=bin/%.o)

@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "encrypt.h"
+
+extern void mostrar_key(unsigned char key[], unsigned char keylen);
+
 static int _get_file_size(FILE *f) {
     fseek(f, 0, SEEK_END);
     // avoid reading the null or EOF terminator
@@ -35,15 +39,43 @@ void embed(struct args args) {
 
     int size = _get_file_size(f);
     char *ext = _get_file_extension(args.input_file);
-    int ext_len = strlen(ext) + 1;
+    int ext_len = strlen(ext);
     char *content = _get_file_content(f, size);
 
-    char *message = malloc(4 + size + ext_len);
+    int len = 4 + size + ext_len;
+    char *message = malloc(len + 1);
+
     sprintf(message, "%.*d", 4, size);
     memcpy(message + 4, content, size);
     memcpy(message + 4 + size, ext, ext_len);
+    message[len] = '\0';
 
-    free(message);
     free(content);
     fclose(f);
+
+    fprintf(stderr, "Content: %s\n", message);
+    fprintf(stderr, "Len: %d\n", len);
+
+    /* printf("Message: %s\n", message); */
+
+    if (args.password) {
+        char *encrypted_message = encrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
+        if (encrypted_message) {
+            free(message);
+            message = encrypted_message;
+        } else {
+            printf("Encryption failed.\n");
+            free(message);
+            exit(EXIT_FAILURE);
+        }
+    }
+    /* printf("Enc: "); */
+    printf("%s", message);
+    /* puts(""); */
+
+    /* message = decrypt(message, args.encryption_algo, args.mode, args.password, size, &size); */
+    /* printf("Dec: %s\n", message); */
+    /* hide(message, args.bitmap_file, args.output_file, args.steg_algo); */
+
+    free(message);
 }

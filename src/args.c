@@ -7,7 +7,7 @@
 
 struct args parse_args(int argc, char **argv) {
     int embed_flag = 0, extract_flag = 0;
-    char *input_file, *bitmap_file, *output_file, *password;
+    char *input_file = NULL, *bitmap_file = NULL, *output_file = NULL, *password = NULL;
     enum tipo_steg steg_algo = -1;
     enum tipo_enc encryption_algo = AES128;
     enum tipo_cb mode = CBC;
@@ -22,8 +22,8 @@ struct args parse_args(int argc, char **argv) {
         {0, 0, 0, 0},
     };
 
-    int opt;
-    int option_index = 0;
+    int opt, option_index = 0;
+
     while ((opt = getopt_long(argc, argv, "p:a:m:", long_options, &option_index)) != -1) {
         switch (opt) {
             case 3: {
