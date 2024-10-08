@@ -53,11 +53,6 @@ void embed(struct args args) {
     free(content);
     fclose(f);
 
-    fprintf(stderr, "Content: %s\n", message);
-    fprintf(stderr, "Len: %d\n", len);
-
-    /* printf("Message: %s\n", message); */
-
     if (args.password) {
         char *encrypted_message = encrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
         if (encrypted_message) {
@@ -69,13 +64,16 @@ void embed(struct args args) {
             exit(EXIT_FAILURE);
         }
     }
-    /* printf("Enc: "); */
-    printf("%s", message);
-    /* puts(""); */
 
-    /* message = decrypt(message, args.encryption_algo, args.mode, args.password, size, &size); */
-    /* printf("Dec: %s\n", message); */
-    /* hide(message, args.bitmap_file, args.output_file, args.steg_algo); */
+    char *decrypted_message = decrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
+    if (decrypted_message) {
+        free(message);
+        message = decrypted_message;
+    } else {
+        printf("Decryption failed.\n");
+        free(message);
+        exit(EXIT_FAILURE);
+    }
 
     free(message);
 }

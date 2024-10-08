@@ -9,12 +9,6 @@
 
 static const EVP_CIPHER* _get_evp_algorithm(enum tipo_enc encryption_algo, enum tipo_cb mode);
 
-void mostrar_key(unsigned char key[], unsigned char keylen) {
-    for (int i = 0; i < keylen; i++) {
-        fprintf(stderr, "%.*x", 2, key[i]);
-    }
-}
-
 char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, char* password, int size, int* encsize) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx)
@@ -23,6 +17,8 @@ char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
     EVP_CIPHER_CTX_init(ctx);
 
     const EVP_CIPHER* cipher = _get_evp_algorithm(encryption_algo, mode);
+    if (!cipher)
+        return NULL;
 
     unsigned char keylen = EVP_CIPHER_key_length(cipher);
     unsigned char ivlen = EVP_CIPHER_iv_length(cipher);
@@ -34,22 +30,8 @@ char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
     unsigned char* key = malloc(keylen);
     unsigned char* iv = malloc(ivlen);
 
-    fprintf(stderr, "Keylen: %d - IVlen: %d\n", keylen, ivlen);
-
-    fprintf(stderr, "Coc: ");
-    mostrar_key(concat, keylen + ivlen);
-    fprintf(stderr, "\n");
-
     strncpy((char*)key, (char*)concat, keylen);
     strncpy((char*)iv, (char*)concat + keylen, ivlen);
-
-    fprintf(stderr, "Key: ");
-    mostrar_key(key, keylen);
-    fprintf(stderr, "\n");
-
-    fprintf(stderr, "IV:  ");
-    mostrar_key(iv, ivlen);
-    fprintf(stderr, "\n");
 
     char* encrypted = calloc(1, MAX_ENC_SIZE);
     int outl = 0, templ = 0;
@@ -71,11 +53,6 @@ char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
 
     *encsize = outl + templ;
 
-    /* if (EVP_CIPHER_CTX_cleanup(ctx) != 1) { */
-    /*     EVP_CIPHER_CTX_free(ctx); */
-    /*     return NULL; */
-    /* } */
-
     EVP_CIPHER_CTX_free(ctx);
     free(key);
     free(iv);
@@ -91,43 +68,47 @@ char* decrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
     EVP_CIPHER_CTX_init(ctx);
 
     const EVP_CIPHER* cipher = _get_evp_algorithm(encryption_algo, mode);
+    if (!cipher)
+        return NULL;
 
-    unsigned char* key = malloc(EVP_CIPHER_key_length(cipher));
-    unsigned char* iv = malloc(EVP_CIPHER_iv_length(cipher));
-    EVP_BytesToKey(cipher, EVP_md5(), NULL, (const unsigned char*)password, strlen(password), 1, key, iv);
+    unsigned char keylen = EVP_CIPHER_key_length(cipher);
+    unsigned char ivlen = EVP_CIPHER_iv_length(cipher);
 
-    char* out = calloc(size + 1, sizeof(char));
-    int length_partial = 0, length = 0;
+    unsigned char concat[keylen + ivlen];
+
+    PKCS5_PBKDF2_HMAC(password, strlen(password), NULL, 0, 10000, EVP_sha256(), keylen + ivlen, concat);
+
+    unsigned char* key = malloc(keylen);
+    unsigned char* iv = malloc(ivlen);
+
+    strncpy((char*)key, (char*)concat, keylen);
+    strncpy((char*)iv, (char*)concat + keylen, ivlen);
+
+    char* decrypted = calloc(1, MAX_ENC_SIZE);
+    int outl = 0, templ = 0;
 
     if (EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv) != 1) {
         EVP_CIPHER_CTX_free(ctx);
         return NULL;
     }
 
-    if (EVP_DecryptUpdate(ctx, (unsigned char*)out, &length_partial, (unsigned char*)message, size) != 1) {
+    if (EVP_DecryptUpdate(ctx, (unsigned char*)decrypted, &outl, (unsigned char*)message, size) != 1) {
         EVP_CIPHER_CTX_free(ctx);
         return NULL;
     }
 
-    if (EVP_DecryptFinal_ex(ctx, (unsigned char*)out + length_partial, &length) != 1) {
+    if (EVP_DecryptFinal(ctx, (unsigned char*)decrypted + outl, &templ) != 1) {
         EVP_CIPHER_CTX_free(ctx);
         return NULL;
     }
 
-    length += length_partial;
-    *decsize = length;
-
-    if (EVP_CIPHER_CTX_cleanup(ctx) != 1) {
-        EVP_CIPHER_CTX_free(ctx);
-        return NULL;
-    }
+    *decsize = outl + templ;
 
     EVP_CIPHER_CTX_free(ctx);
-    free(message);
     free(key);
     free(iv);
 
-    return out;
+    return decrypted;
 }
 
 static const EVP_CIPHER* _get_evp_algorithm(enum tipo_enc encryption_algo, enum tipo_cb mode) {
@@ -170,4 +151,6 @@ static const EVP_CIPHER* _get_evp_algorithm(enum tipo_enc encryption_algo, enum 
             }
         } break;
     }
+
+    return NULL;
 }
