@@ -5,42 +5,20 @@
 #include <string.h>
 
 #include "encrypt.h"
-
-extern void mostrar_key(unsigned char key[], unsigned char keylen);
-
-static int _get_file_size(FILE *f) {
-    fseek(f, 0, SEEK_END);
-    // avoid reading the null or EOF terminator
-    int size = ftell(f) - 1;
-    fseek(f, 0, SEEK_SET);
-    return size;
-}
-
-static char *_get_file_extension(char *filename) {
-    char *dot = strrchr(filename, '.');
-    if (!dot || dot == filename)
-        return "";
-    return dot;
-}
-
-static char *_get_file_content(FILE *f, int size) {
-    fseek(f, 0, SEEK_SET);
-    char *content = malloc(size);
-    fread(content, 1, size, f);
-    return content;
-}
+#include "hide.h"
+#include "utils.h"
 
 void embed(struct args args) {
-    FILE *f = fopen(args.input_file, "rb");
-    if (f == NULL) {
-        printf("Error: Could not open file.\n");
+    FILE *input_file = fopen(args.input_file, "rb");
+    if (input_file == NULL) {
+        printf("Error: Could not open input file.\n");
         exit(EXIT_FAILURE);
     }
 
-    int size = _get_file_size(f);
-    char *ext = _get_file_extension(args.input_file);
+    int size = get_file_size(input_file) - 1;
+    char *ext = get_file_extension(args.input_file);
     int ext_len = strlen(ext);
-    char *content = _get_file_content(f, size);
+    char *content = get_file_content(input_file, size);
 
     int len = 4 + size + ext_len;
     char *message = malloc(len + 1);
@@ -51,7 +29,7 @@ void embed(struct args args) {
     message[len] = '\0';
 
     free(content);
-    fclose(f);
+    fclose(input_file);
 
     if (args.password) {
         char *encrypted_message = encrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
@@ -63,17 +41,34 @@ void embed(struct args args) {
             free(message);
             exit(EXIT_FAILURE);
         }
+        /*
+        char *decrypted_message = decrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
+        if (decrypted_message) {
+            free(message);
+            message = decrypted_message;
+        } else {
+            printf("Decryption failed.\n");
+            free(message);
+            exit(EXIT_FAILURE);
+        }
+        */
     }
 
-    char *decrypted_message = decrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
-    if (decrypted_message) {
-        free(message);
-        message = decrypted_message;
-    } else {
-        printf("Decryption failed.\n");
-        free(message);
+    FILE* bitmap_file = fopen(args.bitmap_file, "rb");
+    if (bitmap_file == NULL) {
+        printf("Error: Could not open bitmap file.\n");
         exit(EXIT_FAILURE);
     }
+    int bmp_size = get_file_size(bitmap_file);
 
+    char* bitmap_data = (char*)malloc(bmp_size);
+    fread(bitmap_data, 1, bmp_size, bitmap_file);
+    fclose(bitmap_file);
+
+    hide(message, bitmap_data, bmp_size, args.steg_algo, args.output_file);
+
+    // puts(message);
+
+    free(bitmap_data);
     free(message);
 }
