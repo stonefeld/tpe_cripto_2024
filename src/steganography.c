@@ -9,19 +9,19 @@
 #include "utils.h"
 
 void embed(struct args args) {
-    FILE *input_file = fopen(args.input_file, "rb");
+    FILE* input_file = fopen(args.input_file, "rb");
     if (input_file == NULL) {
         printf("Error: Could not open input file.\n");
         exit(EXIT_FAILURE);
     }
 
     int size = get_file_size(input_file) - 1;
-    char *ext = get_file_extension(args.input_file);
+    char* ext = get_file_extension(args.input_file);
     int ext_len = strlen(ext);
-    char *content = get_file_content(input_file, size);
+    char* content = get_file_content(input_file, size);
 
     int len = 4 + size + ext_len;
-    char *message = malloc(len + 1);
+    char* message = malloc(len + 1);
 
     sprintf(message, "%.*d", 4, size);
     memcpy(message + 4, content, size);
@@ -32,7 +32,7 @@ void embed(struct args args) {
     fclose(input_file);
 
     if (args.password) {
-        char *encrypted_message = encrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
+        char* encrypted_message = encrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
         if (encrypted_message) {
             free(message);
             message = encrypted_message;
@@ -73,7 +73,7 @@ void embed(struct args args) {
     free(message);
 }
 
-void extract(struct args args){
+void extract(struct args args) {
     FILE* bitmap_file = fopen(args.bitmap_file, "rb");
     if (bitmap_file == NULL) {
         printf("Error: Could not open bitmap file.\n");
@@ -93,7 +93,7 @@ void extract(struct args args){
 
     if (args.password) {
         int len = strlen(message);
-        char *decrypted_message = decrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
+        char* decrypted_message = decrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
         if (decrypted_message) {
             free(message);
             message = decrypted_message;
@@ -107,6 +107,7 @@ void extract(struct args args){
     char size[4] = {message[0], message[1], message[2], message[3]};
     int wasa = atoi(size);
 
+    puts(message);
     char content[wasa];
     memcpy(content, message + 4, wasa);
 
@@ -116,7 +117,7 @@ void extract(struct args args){
     strcpy(output_file_name, args.output_file);
     strcat(output_file_name, ext);
 
-    FILE *output_file = fopen(output_file_name, "wb");
+    FILE* output_file = fopen(output_file_name, "wb");
     if (output_file == NULL) {
         printf("Error: Could not open output file.\n");
         exit(EXIT_FAILURE);

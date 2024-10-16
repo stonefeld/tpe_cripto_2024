@@ -9,13 +9,7 @@ int main(int argc, char **argv) {
     if (args.action == EMBED) {
         embed(args);
     } else if (args.action == EXTRACT) {
-        printf("Extracting\n");
-        printf("Input file: %s\n", args.input_file);
-        printf("Bitmap file: %s\n", args.bitmap_file);
-        printf("Output file: %s\n", args.output_file);
-        printf("Steg algo: %d\n", args.steg_algo);
-        printf("Encryption algo: %d\n", args.encryption_algo);
-        printf("Mode: %d\n", args.mode);
+        extract(args);
     } else {
         printf("No operation specified\n");
     }

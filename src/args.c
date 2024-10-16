@@ -106,8 +106,8 @@ struct args parse_args(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    if (input_file == NULL || bitmap_file == NULL || output_file == NULL || steg_algo < 0) {
-        if (input_file == NULL)
+    if ((embed_flag && input_file == NULL) || bitmap_file == NULL || output_file == NULL || steg_algo < 0) {
+        if (embed_flag && input_file == NULL)
             fprintf(stderr, "Error: Falta el archivo de entrada.\n");
         else if (bitmap_file == NULL)
             fprintf(stderr, "Error: Falta el archivo BMP portador.\n");
@@ -115,7 +115,6 @@ struct args parse_args(int argc, char **argv) {
             fprintf(stderr, "Error: Falta el archivo BMP de salida.\n");
         else if (steg_algo < 0)
             fprintf(stderr, "Error: Falta el algoritmo de esteganografía.\n");
-
         exit(EXIT_FAILURE);
     }
 
