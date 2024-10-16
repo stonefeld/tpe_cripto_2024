@@ -1,5 +1,5 @@
-#ifndef ENCRYPT_H
-#define ENCRYPT_H
+#ifndef CIPHER_H
+#define CIPHER_H
 
 #include "args.h"
 

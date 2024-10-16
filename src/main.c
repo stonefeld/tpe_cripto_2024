@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #include "args.h"
-#include "embed.h"
+#include "steganography.h"
 
 int main(int argc, char **argv) {
     struct args args = parse_args(argc, argv);

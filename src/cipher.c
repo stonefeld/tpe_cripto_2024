@@ -1,4 +1,4 @@
-#include "encrypt.h"
+#include "cipher.h"
 
 #include <openssl/bio.h>
 #include <openssl/des.h>
