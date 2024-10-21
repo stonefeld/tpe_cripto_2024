@@ -88,7 +88,7 @@ static char* _hide_lsb4(char* message, int msg_size, char* bitmap_file, int bmp_
 
 static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_size) {
     int message_length = msg_size * 8;
-    int capacity = bmp_size - BMP_HEADER_SIZE - 4 * 8;
+    int capacity = bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE;
 
     if (message_length > capacity) {
         printf("Error: BMP file is not big enough. Max capacity: %d\n", capacity);
@@ -102,7 +102,7 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
     }
 
     char* ret = bitmap_data;
-    bitmap_data += BMP_HEADER_SIZE + 4 * 8; // 4 bytes para registro de cambios realizados
+    bitmap_data += BMP_HEADER_SIZE + CONTROL_BYTES_SIZE; // 4 bytes para registro de cambios realizados
 
     for (int i = 0; i < msg_size; i++) {
         for (int j = 0; j < 8; j++) {
@@ -165,7 +165,7 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
         bitmap_data[3] &= 0xFE;
     }
 
-    bitmap_data = ret + BMP_HEADER_SIZE + 4 * 8;
+    bitmap_data = ret + BMP_HEADER_SIZE + CONTROL_BYTES_SIZE;
 
     for (int i = 0; i < msg_size; i++) {
         for (int j = 0; j < 8; j++) {
@@ -230,7 +230,42 @@ static char* _reveal_lsb4(char* bitmap_data, int bmp_size) {
 }
 
 static char* _reveal_lsbi(char* bitmap_data, int bmp_size) {
-    bitmap_data[0] = bmp_size;
-    return NULL;
+    char* original_bitmap_data = bitmap_data;
+    int max_msg_size = (bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE) / 8;
+
+    int must_invert[4] = {0};
+    
+    bitmap_data += BMP_HEADER_SIZE;
+
+    for (int i = 0; i < 4; i++) {
+        must_invert[i] = (bitmap_data[i] & 0x01) == 0x01 ? 1 : 0;
+    }
+    
+    bitmap_data += CONTROL_BYTES_SIZE;
+
+    for (int i = 0; i < max_msg_size; i++) {
+        for (int j = 0; j < 8; j++) {
+            int idx = (i * 8) + j;
+
+            // extraigo el 6to y 7mo bit
+            uint8_t bit6 = (bitmap_data[idx] >> 5) & 0x01;
+            uint8_t bit7 = (bitmap_data[idx] >> 6) & 0x01;
+
+            // si tengo que cambiar el bit
+            if (must_invert[(bit6 << 1) | bit7] == 1) {
+                bitmap_data[idx] ^= 0x01;
+            }
+        }
+    }
+    
+    // genero el nuevo char* que no tiene los 4 bytes de control
+    char* new_bitmap_data = malloc(bmp_size - CONTROL_BYTES_SIZE);
+    memcpy(new_bitmap_data, original_bitmap_data, BMP_HEADER_SIZE);
+    memcpy(new_bitmap_data + BMP_HEADER_SIZE, original_bitmap_data + BMP_HEADER_SIZE + CONTROL_BYTES_SIZE, bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE);
+
+    char* hidden_message = _reveal_lsb1(new_bitmap_data, bmp_size - CONTROL_BYTES_SIZE);
+    free(new_bitmap_data);
+
+    return hidden_message;
 }
 /* END EXTRACT FUNCTIONS */

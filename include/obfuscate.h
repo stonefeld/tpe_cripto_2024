@@ -6,6 +6,8 @@
 char* obf_hide(char* message, int msg_size, char* bitmap_data, int bmp_size, enum tipo_steg steg_algo);
 char* obf_reveal(char* bitmap_data, int bmp_size, enum tipo_steg steg_algo);
 
+#define CONTROL_BYTES_SIZE 4 * 8
+
 enum lsbi_state {
     CHANGED = 0,
     NOT_CHANGED,
