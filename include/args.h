@@ -17,6 +17,6 @@ struct args {
     char *password;
 };
 
-struct args parse_args(int argc, char **argv);
+struct args args_parse(int argc, char **argv);
 
 #endif

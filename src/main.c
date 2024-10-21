@@ -4,12 +4,12 @@
 #include "steganography.h"
 
 int main(int argc, char **argv) {
-    struct args args = parse_args(argc, argv);
+    struct args args = args_parse(argc, argv);
 
     if (args.action == EMBED) {
-        embed(args);
+        steg_embed(args);
     } else if (args.action == EXTRACT) {
-        extract(args);
+        steg_extract(args);
     } else {
         printf("No operation specified\n");
     }

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct args parse_args(int argc, char **argv) {
+struct args args_parse(int argc, char **argv) {
     int embed_flag = 0, extract_flag = 0;
     char *input_file = NULL, *bitmap_file = NULL, *output_file = NULL, *password = NULL;
     enum tipo_steg steg_algo = -1;
@@ -87,8 +87,8 @@ struct args parse_args(int argc, char **argv) {
 
             case '?': {
                 fprintf(stderr,
-                        "Uso: %c <--embed || --extract> --in <file> --p <bitmapfile> --out <bitmapfile> --steg <LSB1 | "
-                        "LSB4 | LSBI> [--a <aes128 | aes192 | aes256 | 3des>] [--m <ecb | cfb | ofb | cbc>] [--pass "
+                        "Uso: %c <--embed || --extract> --in <file> -p <bitmapfile> --out <bitmapfile> --steg <LSB1 | "
+                        "LSB4 | LSBI> [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [--pass "
                         "<password>]\n",
                         opt);
                 exit(EXIT_FAILURE);
@@ -97,24 +97,24 @@ struct args parse_args(int argc, char **argv) {
     }
 
     if (!embed_flag && !extract_flag) {
-        fprintf(stderr, "Error: Debe especificar --embed o --extract.\n");
+        printf("Error: Debe especificar --embed o --extract.\n");
         exit(EXIT_FAILURE);
     }
 
     if (embed_flag && extract_flag) {
-        fprintf(stderr, "Error: No puede usar --embed y --extract al mismo tiempo.\n");
+        printf("Error: No puede usar --embed y --extract al mismo tiempo.\n");
         exit(EXIT_FAILURE);
     }
 
     if ((embed_flag && input_file == NULL) || bitmap_file == NULL || output_file == NULL || steg_algo < 0) {
         if (embed_flag && input_file == NULL)
-            fprintf(stderr, "Error: Falta el archivo de entrada.\n");
+            printf("Error: Falta el archivo de entrada.\n");
         else if (bitmap_file == NULL)
-            fprintf(stderr, "Error: Falta el archivo BMP portador.\n");
+            printf("Error: Falta el archivo BMP portador.\n");
         else if (output_file == NULL)
-            fprintf(stderr, "Error: Falta el archivo BMP de salida.\n");
+            printf("Error: Falta el archivo BMP de salida.\n");
         else if (steg_algo < 0)
-            fprintf(stderr, "Error: Falta el algoritmo de esteganografía.\n");
+            printf("Error: Falta el algoritmo de esteganografía.\n");
         exit(EXIT_FAILURE);
     }
 

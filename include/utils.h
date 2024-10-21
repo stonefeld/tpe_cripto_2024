@@ -3,10 +3,8 @@
 
 #include <stdio.h>
 
-int get_file_size(FILE *f);
-
-char *get_file_extension(char *filename);
-
-char *get_file_content(FILE *f, int size);
+int utl_filesize(FILE *f);
+char *utl_fileext(char *filename);
+char *utl_filecontent(FILE *f, int size);
 
 #endif

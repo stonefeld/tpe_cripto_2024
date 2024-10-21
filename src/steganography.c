@@ -4,21 +4,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bmp.h"
 #include "cipher.h"
 #include "obfuscate.h"
 #include "utils.h"
 
-void embed(struct args args) {
+void steg_embed(struct args args) {
     FILE* input_file = fopen(args.input_file, "rb");
     if (input_file == NULL) {
         printf("Error: Could not open input file.\n");
         exit(EXIT_FAILURE);
     }
 
-    int size = get_file_size(input_file) - 1;
-    char* ext = get_file_extension(args.input_file);
+    int size = utl_filesize(input_file) - 1;
+    char* ext = utl_fileext(args.input_file);
     int ext_len = strlen(ext);
-    char* content = get_file_content(input_file, size);
+    char* content = utl_filecontent(input_file, size);
 
     int len = 4 + size + ext_len;
     char* message = malloc(len + 1);
@@ -48,12 +49,23 @@ void embed(struct args args) {
         printf("Error: Could not open bitmap file.\n");
         exit(EXIT_FAILURE);
     }
-    int bmp_size = get_file_size(bitmap_file);
 
-    char* bitmap_data = get_file_content(bitmap_file, bmp_size);
+    int bmp_size = utl_filesize(bitmap_file);
+    char* bitmap_data = utl_filecontent(bitmap_file, bmp_size);
+    struct bmp_header bitmap_header = bmp_get_header(bitmap_data);
+
     fclose(bitmap_file);
 
-    char* hidden_bmp = hide(message, bitmap_data, bmp_size, args.steg_algo);
+    if (bitmap_header.bits_per_pixel != 24) {
+        printf("Error: Bitmap must be 24 bits per pixel.\n");
+        exit(EXIT_FAILURE);
+    }
+    if (bitmap_header.compression != BI_RGB) {
+        printf("Error: Bitmap must not be compressed.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    char* hidden_bmp = obf_hide(message, len, bitmap_data, bmp_size, args.steg_algo);
 
     if (hidden_bmp) {
         FILE* f = fopen(args.output_file, "wb");
@@ -73,19 +85,29 @@ void embed(struct args args) {
     free(message);
 }
 
-void extract(struct args args) {
+void steg_extract(struct args args) {
     FILE* bitmap_file = fopen(args.bitmap_file, "rb");
     if (bitmap_file == NULL) {
         printf("Error: Could not open bitmap file.\n");
         exit(EXIT_FAILURE);
     }
-    int bmp_size = get_file_size(bitmap_file);
 
-    char* bitmap_data = get_file_content(bitmap_file, bmp_size);
+    int bmp_size = utl_filesize(bitmap_file);
+    char* bitmap_data = utl_filecontent(bitmap_file, bmp_size);
+    struct bmp_header bitmap_header = bmp_get_header(bitmap_data);
+
     fclose(bitmap_file);
 
-    char* message = reveal(bitmap_data, bmp_size, args.steg_algo);
+    if (bitmap_header.bits_per_pixel != 24) {
+        printf("Error: Bitmap must be 24 bits per pixel.\n");
+        exit(EXIT_FAILURE);
+    }
+    if (bitmap_header.compression != BI_RGB) {
+        printf("Error: Bitmap must not be compressed.\n");
+        exit(EXIT_FAILURE);
+    }
 
+    char* message = obf_reveal(bitmap_data, bmp_size, args.steg_algo);
     if (!message) {
         printf("Error: Could not reveal message.\n");
         exit(EXIT_FAILURE);
@@ -107,11 +129,14 @@ void extract(struct args args) {
     char size[4] = {message[0], message[1], message[2], message[3]};
     int wasa = atoi(size);
 
-    puts(message);
     char content[wasa];
     memcpy(content, message + 4, wasa);
 
     char* ext = message + 4 + wasa;
+    if (ext[0] != '.') {
+        fprintf(stderr, "Error: Invalid file extension.\n");
+        exit(EXIT_FAILURE);
+    }
 
     char output_file_name[strlen(args.output_file) + strlen(ext)];
     strcpy(output_file_name, args.output_file);
