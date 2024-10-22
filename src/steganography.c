@@ -131,14 +131,9 @@ void steg_extract(struct args args) {
     }
 
     unsigned int size = 0;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++)
         size |= (unsigned char)message[i] << (24 - (i * 8));
-    }
-    printf("%u\n", size);
 
-    // char content[size + 1];
-    // memcpy(content, message + 4, size);
-    // content[size] = '\0';
     char *content = message + 4;
     char* ext = content + size;
     if (ext[0] != '.') {

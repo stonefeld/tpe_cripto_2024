@@ -38,7 +38,7 @@ static char* _hide_lsb1(char* message, int msg_size, char* bitmap_data, int bmp_
     int capacity = bmp_size - BMP_HEADER_SIZE;
 
     if (message_length > capacity) {
-        printf("Error: BMP file is not big enough. Max capacity: %d\n", capacity);
+        printf("Error: BMP file is not big enough. Max capacity: %d\n", capacity / 8);
         return NULL;
     }
 
@@ -61,20 +61,18 @@ static char* _hide_lsb4(char* message, int msg_size, char* bitmap_file, int bmp_
     int capacity = bmp_size - BMP_HEADER_SIZE;
 
     if (message_length > capacity) {
-        printf("Error: BMP file is not big enough. Max capacity: %d\n", capacity);
+        printf("Error: BMP file is not big enough. Max capacity: %d\n", capacity / 2);
         return NULL;
     }
 
     char* ret = bitmap_file;
     bitmap_file += BMP_HEADER_SIZE;
 
-    for (int i = 0; i < capacity; i++) {
+    for (int i = 0; i <= msg_size; i++) {
         for (int j = 0; j < 2; j++) {
             int idx = (i * 2) + j;
-            bitmap_file[idx] = (bitmap_file[idx] & 0xF0) | ((message[i] >> (j * 4)) & 0x0F);
+            bitmap_file[idx] = (bitmap_file[idx] & 0xF0) | ((message[i] >> ((1 - j) * 4)) & 0x0F);
         }
-        if (message[i] == '\0')
-            break;
     }
 
     return ret;
@@ -201,10 +199,7 @@ static char* _reveal_lsb1(char* bitmap_data, int bmp_size) {
         }
         message[position] = byte;
         size |= byte << (24 - (position * 8));
-        printf("%.2x\n", (unsigned char)byte);
     }
-
-    printf("%u\n", size);
 
     for (; position < size; position++) {
         byte = 0;
@@ -213,8 +208,6 @@ static char* _reveal_lsb1(char* bitmap_data, int bmp_size) {
             byte |= (bitmap_data[idx] & 0x01) << (7 - j);
         }
         message[position] = byte;
-        // if (byte == '\0')
-        // break;
     }
 
     for (;; position++) {
@@ -232,22 +225,46 @@ static char* _reveal_lsb1(char* bitmap_data, int bmp_size) {
 }
 
 static char* _reveal_lsb4(char* bitmap_data, int bmp_size) {
-    char* message = malloc(bmp_size / 2);
-    int capacity = (bmp_size - BMP_HEADER_SIZE) / 2;
+    int max_msg_size = (bmp_size - BMP_HEADER_SIZE) / 2;
+    char *message = malloc(max_msg_size);
 
     bitmap_data += BMP_HEADER_SIZE;
 
-    int i;
-    for (i = 0; i < capacity; i += 2) {
-        char byte = 0;
-        for (int j = 0; j < 2; j++)
-            byte |= (bitmap_data[i + j] & 0x0F) << (j * 4);
-        message[i / 2] = byte;
+    unsigned int size = 0;
+    unsigned int position;
+    unsigned char byte = '\0';
+
+    for (position = 0; position < 4; position++) {
+        byte = 0;
+        for (int j = 0; j < 2; j++) {
+            int idx = (position * 2) + j;
+            byte |= (bitmap_data[idx] & 0x0F) << ((1 - j) * 4);
+        }
+        message[position] = byte;
+        size |= byte << (24 - (position * 8));
+    }
+
+    for (; position < size; position++) {
+        byte = 0;
+        for (int j = 0; j < 2; j++) {
+            int idx = (position * 2) + j;
+            byte |= (bitmap_data[idx] & 0x0F) << ((1 - j) * 4);
+        }
+        message[position] = byte;
+    }
+
+    for (;; position++) {
+        byte = 0;
+        for (int j = 0; j < 2; j++) {
+            int idx = (position * 2) + j;
+            byte |= (bitmap_data[idx] & 0x0F) << ((1 - j) * 4);
+        }
+        message[position] = byte;
         if (byte == '\0')
             break;
     }
 
-    return realloc(message, i / 2);
+    return realloc(message, position + 1);
 }
 
 static char* _reveal_lsbi(char* bitmap_data, int bmp_size) {
