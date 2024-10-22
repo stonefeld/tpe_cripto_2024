@@ -9,7 +9,7 @@
 
 static const EVP_CIPHER* _get_evp_algorithm(enum tipo_enc encryption_algo, enum tipo_cb mode);
 
-char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, char* password, int size, int* encsize) {
+char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, char* password, unsigned int size, unsigned int* encsize) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx)
         return NULL;
@@ -60,7 +60,7 @@ char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
     return encrypted;
 }
 
-char* decrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, char* password, int size, int* decsize) {
+char* decrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, char* password, unsigned int size, unsigned int* decsize) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx)
         return NULL;

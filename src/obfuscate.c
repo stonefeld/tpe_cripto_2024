@@ -10,8 +10,8 @@
 static char* _hide_lsb1(char* message, int msg_size, char* bitmap_data, int bmp_size);
 static char* _hide_lsb4(char* message, int msg_size, char* bitmap_data, int bmp_size);
 static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_size);
-static char* _reveal_lsb1(char* bitmap_data, int bmp_size);
-static char* _reveal_lsb4(char* bitmap_data, int bmp_size);
+static char* _reveal_lsb1(char* bitmap_data, int bmp_size, char is_encrypted);
+static char* _reveal_lsb4(char* bitmap_data, int bmp_size, char is_encrypted);
 static char* _reveal_lsbi(char* bitmap_data, int bmp_size);
 
 char* obf_hide(char* message, int msg_size, char* bitmap_data, int bmp_size, enum tipo_steg steg_algo) {
@@ -23,10 +23,10 @@ char* obf_hide(char* message, int msg_size, char* bitmap_data, int bmp_size, enu
     }
 }
 
-char* obf_reveal(char* bitmap_data, int bmp_size, enum tipo_steg steg_algo) {
+char* obf_reveal(char* bitmap_data, int bmp_size, enum tipo_steg steg_algo, char is_encrypted) {
     switch (steg_algo) {
-        case LSB1: return _reveal_lsb1(bitmap_data, bmp_size);
-        case LSB4: return _reveal_lsb4(bitmap_data, bmp_size);
+        case LSB1: return _reveal_lsb1(bitmap_data, bmp_size, is_encrypted);
+        case LSB4: return _reveal_lsb4(bitmap_data, bmp_size, is_encrypted);
         case LSBI: return _reveal_lsbi(bitmap_data, bmp_size);
         default: return NULL;
     }
@@ -55,7 +55,6 @@ static char* _hide_lsb1(char* message, int msg_size, char* bitmap_data, int bmp_
     return ret;
 }
 
-// TODO: arreglar
 static char* _hide_lsb4(char* message, int msg_size, char* bitmap_file, int bmp_size) {
     int message_length = msg_size * 2;
     int capacity = bmp_size - BMP_HEADER_SIZE;
@@ -181,7 +180,7 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
 /* END EMBED FUNCTIONS */
 
 /* START EXTRACT FUNCTIONS */
-static char* _reveal_lsb1(char* bitmap_data, int bmp_size) {
+static char* _reveal_lsb1(char* bitmap_data, int bmp_size, char is_encrypted) {
     int max_msg_size = (bmp_size - BMP_HEADER_SIZE) / 8;
     char* message = malloc(max_msg_size);
 
@@ -201,7 +200,7 @@ static char* _reveal_lsb1(char* bitmap_data, int bmp_size) {
         size |= byte << (24 - (position * 8));
     }
 
-    for (; position < size; position++) {
+    for (; position < size + 4; position++) {
         byte = 0;
         for (int j = 0; j < 8; j++) {
             int idx = (position * 8) + j;
@@ -210,23 +209,25 @@ static char* _reveal_lsb1(char* bitmap_data, int bmp_size) {
         message[position] = byte;
     }
 
-    for (;; position++) {
-        byte = 0;
-        for (int j = 0; j < 8; j++) {
-            int idx = (position * 8) + j;
-            byte |= (bitmap_data[idx] & 0x01) << (7 - j);
+    if (!is_encrypted) {
+        for (;; position++) {
+            byte = 0;
+            for (int j = 0; j < 8; j++) {
+                int idx = (position * 8) + j;
+                byte |= (bitmap_data[idx] & 0x01) << (7 - j);
+            }
+            message[position] = byte;
+            if (byte == '\0')
+                break;
         }
-        message[position] = byte;
-        if (byte == '\0')
-            break;
     }
 
     return realloc(message, position + 1);
 }
 
-static char* _reveal_lsb4(char* bitmap_data, int bmp_size) {
+static char* _reveal_lsb4(char* bitmap_data, int bmp_size, char is_encrypted) {
     int max_msg_size = (bmp_size - BMP_HEADER_SIZE) / 2;
-    char *message = malloc(max_msg_size);
+    char* message = malloc(max_msg_size);
 
     bitmap_data += BMP_HEADER_SIZE;
 
@@ -244,7 +245,7 @@ static char* _reveal_lsb4(char* bitmap_data, int bmp_size) {
         size |= byte << (24 - (position * 8));
     }
 
-    for (; position < size; position++) {
+    for (; position < size + 4; position++) {
         byte = 0;
         for (int j = 0; j < 2; j++) {
             int idx = (position * 2) + j;
@@ -253,15 +254,17 @@ static char* _reveal_lsb4(char* bitmap_data, int bmp_size) {
         message[position] = byte;
     }
 
-    for (;; position++) {
-        byte = 0;
-        for (int j = 0; j < 2; j++) {
-            int idx = (position * 2) + j;
-            byte |= (bitmap_data[idx] & 0x0F) << ((1 - j) * 4);
+    if (!is_encrypted) {
+        for (;; position++) {
+            byte = 0;
+            for (int j = 0; j < 2; j++) {
+                int idx = (position * 2) + j;
+                byte |= (bitmap_data[idx] & 0x0F) << ((1 - j) * 4);
+            }
+            message[position] = byte;
+            if (byte == '\0')
+                break;
         }
-        message[position] = byte;
-        if (byte == '\0')
-            break;
     }
 
     return realloc(message, position + 1);
@@ -302,7 +305,8 @@ static char* _reveal_lsbi(char* bitmap_data, int bmp_size) {
     memcpy(new_bitmap_data + BMP_HEADER_SIZE, original_bitmap_data + BMP_HEADER_SIZE + CONTROL_BYTES_SIZE,
            bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE);
 
-    char* hidden_message = _reveal_lsb1(new_bitmap_data, bmp_size - CONTROL_BYTES_SIZE);
+    // TODO: guatefac el flag de is_encrypted
+    char* hidden_message = _reveal_lsb1(new_bitmap_data, bmp_size - CONTROL_BYTES_SIZE, 0);
     free(new_bitmap_data);
 
     return hidden_message;

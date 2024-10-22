@@ -21,10 +21,9 @@ void steg_embed(struct args args) {
     int ext_len = strlen(ext);
     char* content = utl_filecontent(input_file, size);
 
-    int len = 4 + size + ext_len;
+    unsigned int len = 4 + size + ext_len;
     char* message = malloc(len + 1);
 
-    // sprintf(message, "%.*d", 4, size);
     message[0] = (size >> 24) & 0xFF;
     message[1] = (size >> 16) & 0xFF;
     message[2] = (size >> 8) & 0xFF;
@@ -40,7 +39,14 @@ void steg_embed(struct args args) {
         char* encrypted_message = encrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
         if (encrypted_message) {
             free(message);
-            message = encrypted_message;
+            message = malloc(len + 4);
+            message[0] = (len >> 24) & 0xFF;
+            message[1] = (len >> 16) & 0xFF;
+            message[2] = (len >> 8) & 0xFF;
+            message[3] = len & 0xFF;
+            memcpy(message + 4, encrypted_message, len);
+            len += 3;
+            free(encrypted_message);
         } else {
             printf("Encryption failed.\n");
             free(message);
@@ -111,30 +117,32 @@ void steg_extract(struct args args) {
         exit(EXIT_FAILURE);
     }
 
-    char* message = obf_reveal(bitmap_data, bmp_size, args.steg_algo);
+    char* message = obf_reveal(bitmap_data, bmp_size, args.steg_algo, args.password != NULL);
     if (!message) {
         printf("Error: Could not reveal message.\n");
         exit(EXIT_FAILURE);
-    }
-
-    if (args.password) {
-        int len = strlen(message);
-        char* decrypted_message = decrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
-        if (decrypted_message) {
-            free(message);
-            message = decrypted_message;
-        } else {
-            printf("Decryption failed.\n");
-            free(message);
-            exit(EXIT_FAILURE);
-        }
     }
 
     unsigned int size = 0;
     for (int i = 0; i < 4; i++)
         size |= (unsigned char)message[i] << (24 - (i * 8));
 
-    char *content = message + 4;
+    if (args.password) {
+        char* decrypted_message = decrypt(message + 4, args.encryption_algo, args.mode, args.password, size, &size);
+        if (decrypted_message) {
+            free(message);
+            message = decrypted_message;
+            size = 0;
+            for (int i = 0; i < 4; i++)
+                size |= (unsigned char)message[i] << (24 - (i * 8));
+        } else {
+            printf("Error: Decryption failed.\n");
+            free(message);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    char* content = message + 4;
     char* ext = content + size;
     if (ext[0] != '.') {
         printf("Error: Invalid file extension.\n");
