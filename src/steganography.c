@@ -24,7 +24,11 @@ void steg_embed(struct args args) {
     int len = 4 + size + ext_len;
     char* message = malloc(len + 1);
 
-    sprintf(message, "%.*d", 4, size);
+    // sprintf(message, "%.*d", 4, size);
+    message[0] = (size >> 24) & 0xFF;
+    message[1] = (size >> 16) & 0xFF;
+    message[2] = (size >> 8) & 0xFF;
+    message[3] = size & 0xFF;
     memcpy(message + 4, content, size);
     memcpy(message + 4 + size, ext, ext_len);
     message[len] = '\0';
@@ -126,15 +130,19 @@ void steg_extract(struct args args) {
         }
     }
 
-    char size[4] = {message[0], message[1], message[2], message[3]};
-    int wasa = atoi(size);
+    unsigned int size = 0;
+    for (int i = 0; i < 4; i++) {
+        size |= (unsigned char)message[i] << (24 - (i * 8));
+    }
+    printf("%u\n", size);
 
-    char content[wasa];
-    memcpy(content, message + 4, wasa);
-
-    char* ext = message + 4 + wasa;
+    // char content[size + 1];
+    // memcpy(content, message + 4, size);
+    // content[size] = '\0';
+    char *content = message + 4;
+    char* ext = content + size;
     if (ext[0] != '.') {
-        fprintf(stderr, "Error: Invalid file extension.\n");
+        printf("Error: Invalid file extension.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -148,7 +156,7 @@ void steg_extract(struct args args) {
         exit(EXIT_FAILURE);
     }
 
-    fwrite(content, 1, wasa, output_file);
+    fwrite(content, 1, size, output_file);
     fclose(output_file);
 
     free(bitmap_data);

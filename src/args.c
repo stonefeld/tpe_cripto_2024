@@ -86,11 +86,10 @@ struct args args_parse(int argc, char **argv) {
             } break;
 
             case '?': {
-                fprintf(stderr,
-                        "Uso: %c <--embed || --extract> --in <file> -p <bitmapfile> --out <bitmapfile> --steg <LSB1 | "
-                        "LSB4 | LSBI> [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [--pass "
-                        "<password>]\n",
-                        opt);
+                printf("Uso: %c <--embed || --extract> --in <file> -p <bitmapfile> --out <bitmapfile> --steg <LSB1 | "
+                       "LSB4 | LSBI> [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [--pass "
+                       "<password>]\n",
+                       opt);
                 exit(EXIT_FAILURE);
             } break;
         }

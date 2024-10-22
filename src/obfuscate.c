@@ -1,9 +1,9 @@
 #include "obfuscate.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 
 #include "bmp.h"
 
@@ -15,26 +15,21 @@ static char* _reveal_lsb4(char* bitmap_data, int bmp_size);
 static char* _reveal_lsbi(char* bitmap_data, int bmp_size);
 
 char* obf_hide(char* message, int msg_size, char* bitmap_data, int bmp_size, enum tipo_steg steg_algo) {
-    char* hidden_message = NULL;
-
     switch (steg_algo) {
-        case LSB1: hidden_message = _hide_lsb1(message, msg_size, bitmap_data, bmp_size); break;
-        case LSB4: hidden_message = _hide_lsb4(message, msg_size, bitmap_data, bmp_size); break;
-        case LSBI: hidden_message = _hide_lsbi(message, msg_size, bitmap_data, bmp_size); break;
+        case LSB1: return _hide_lsb1(message, msg_size, bitmap_data, bmp_size);
+        case LSB4: return _hide_lsb4(message, msg_size, bitmap_data, bmp_size);
+        case LSBI: return _hide_lsbi(message, msg_size, bitmap_data, bmp_size);
+        default: return NULL;
     }
-
-    return hidden_message;
 }
 
 char* obf_reveal(char* bitmap_data, int bmp_size, enum tipo_steg steg_algo) {
-    char* hidden_message = NULL;
-
     switch (steg_algo) {
-        case LSB1: hidden_message = _reveal_lsb1(bitmap_data, bmp_size); break;
-        case LSB4: hidden_message = _reveal_lsb4(bitmap_data, bmp_size); break;
-        case LSBI: hidden_message = _reveal_lsbi(bitmap_data, bmp_size); break;
+        case LSB1: return _reveal_lsb1(bitmap_data, bmp_size);
+        case LSB4: return _reveal_lsb4(bitmap_data, bmp_size);
+        case LSBI: return _reveal_lsbi(bitmap_data, bmp_size);
+        default: return NULL;
     }
-    return hidden_message;
 }
 
 /* START EMBED FUNCTIONS */
@@ -53,10 +48,8 @@ static char* _hide_lsb1(char* message, int msg_size, char* bitmap_data, int bmp_
     for (int i = 0; i <= msg_size; i++) {
         for (int j = 0; j < 8; j++) {
             int idx = (i * 8) + j;
-            bitmap_data[idx] = (bitmap_data[idx] & 0xFE) | ((message[i] >> j) & 0x01);
+            bitmap_data[idx] = (bitmap_data[idx] & 0xFE) | ((message[i] >> (7 - j)) & 0x01);
         }
-        if (message[i] == '\0')
-            break;
     }
 
     return ret;
@@ -103,7 +96,7 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
     }
 
     char* ret = bitmap_data;
-    bitmap_data += BMP_HEADER_SIZE + CONTROL_BYTES_SIZE; // 4 bytes para registro de cambios realizados
+    bitmap_data += BMP_HEADER_SIZE + CONTROL_BYTES_SIZE;  // 4 bytes para registro de cambios realizados
 
     for (int i = 0; i < msg_size; i++) {
         for (int j = 0; j < 8; j++) {
@@ -196,19 +189,46 @@ static char* _reveal_lsb1(char* bitmap_data, int bmp_size) {
 
     bitmap_data += BMP_HEADER_SIZE;
 
-    int i;
-    for (i = 0; i < max_msg_size; i++) {
-        char byte = 0;
+    unsigned int size = 0;
+    unsigned int position;
+    unsigned char byte = '\0';
+
+    for (position = 0; position < 4; position++) {
+        byte = 0;
         for (int j = 0; j < 8; j++) {
-            int idx = (i * 8) + j;
-            byte |= (bitmap_data[idx] & 0x01) << j;
+            int idx = (position * 8) + j;
+            byte |= (bitmap_data[idx] & 0x01) << (7 - j);
         }
-        message[i] = byte;
+        message[position] = byte;
+        size |= byte << (24 - (position * 8));
+        printf("%.2x\n", (unsigned char)byte);
+    }
+
+    printf("%u\n", size);
+
+    for (; position < size; position++) {
+        byte = 0;
+        for (int j = 0; j < 8; j++) {
+            int idx = (position * 8) + j;
+            byte |= (bitmap_data[idx] & 0x01) << (7 - j);
+        }
+        message[position] = byte;
+        // if (byte == '\0')
+        // break;
+    }
+
+    for (;; position++) {
+        byte = 0;
+        for (int j = 0; j < 8; j++) {
+            int idx = (position * 8) + j;
+            byte |= (bitmap_data[idx] & 0x01) << (7 - j);
+        }
+        message[position] = byte;
         if (byte == '\0')
             break;
     }
 
-    return realloc(message, i);
+    return realloc(message, position + 1);
 }
 
 static char* _reveal_lsb4(char* bitmap_data, int bmp_size) {
@@ -235,13 +255,13 @@ static char* _reveal_lsbi(char* bitmap_data, int bmp_size) {
     int max_msg_size = (bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE) / 8;
 
     int must_invert[4] = {0};
-    
+
     bitmap_data += BMP_HEADER_SIZE;
 
     for (int i = 0; i < 4; i++) {
         must_invert[i] = (bitmap_data[i] & 0x01) == 0x01 ? 1 : 0;
     }
-    
+
     bitmap_data += CONTROL_BYTES_SIZE;
 
     for (int i = 0; i < max_msg_size; i++) {
@@ -258,11 +278,12 @@ static char* _reveal_lsbi(char* bitmap_data, int bmp_size) {
             }
         }
     }
-    
+
     // genero el nuevo char* que no tiene los 4 bytes de control
     char* new_bitmap_data = malloc(bmp_size - CONTROL_BYTES_SIZE);
     memcpy(new_bitmap_data, original_bitmap_data, BMP_HEADER_SIZE);
-    memcpy(new_bitmap_data + BMP_HEADER_SIZE, original_bitmap_data + BMP_HEADER_SIZE + CONTROL_BYTES_SIZE, bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE);
+    memcpy(new_bitmap_data + BMP_HEADER_SIZE, original_bitmap_data + BMP_HEADER_SIZE + CONTROL_BYTES_SIZE,
+           bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE);
 
     char* hidden_message = _reveal_lsb1(new_bitmap_data, bmp_size - CONTROL_BYTES_SIZE);
     free(new_bitmap_data);
