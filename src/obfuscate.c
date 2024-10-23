@@ -12,7 +12,7 @@ static char* _hide_lsb4(char* message, int msg_size, char* bitmap_data, int bmp_
 static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_size);
 static char* _reveal_lsb1(char* bitmap_data, int bmp_size, char is_encrypted);
 static char* _reveal_lsb4(char* bitmap_data, int bmp_size, char is_encrypted);
-static char* _reveal_lsbi(char* bitmap_data, int bmp_size);
+static char* _reveal_lsbi(char* bitmap_data, int bmp_size, char is_encrypted);
 
 char* obf_hide(char* message, int msg_size, char* bitmap_data, int bmp_size, enum tipo_steg steg_algo) {
     switch (steg_algo) {
@@ -27,7 +27,7 @@ char* obf_reveal(char* bitmap_data, int bmp_size, enum tipo_steg steg_algo, char
     switch (steg_algo) {
         case LSB1: return _reveal_lsb1(bitmap_data, bmp_size, is_encrypted);
         case LSB4: return _reveal_lsb4(bitmap_data, bmp_size, is_encrypted);
-        case LSBI: return _reveal_lsbi(bitmap_data, bmp_size);
+        case LSBI: return _reveal_lsbi(bitmap_data, bmp_size, is_encrypted);
         default: return NULL;
     }
 }
@@ -78,102 +78,64 @@ static char* _hide_lsb4(char* message, int msg_size, char* bitmap_file, int bmp_
 }
 
 static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_size) {
-    int message_length = msg_size * 8;
-    int capacity = bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE;
+    int message_length = msg_size * 8 + 4;
+    int capacity = bmp_size - BMP_HEADER_SIZE;
 
     if (message_length > capacity) {
-        printf("Error: BMP file is not big enough. Max capacity: %d\n", capacity);
-        return NULL;
-    }
-
-    lsbi_counters* counters = (lsbi_counters*)calloc(1, sizeof(lsbi_counters));
-    if (counters == NULL) {
-        printf("Error: Memory allocation failed.\n");
+        printf("Error: BMP file is not big enough. Max capacity: %d\n", capacity / 8);
         return NULL;
     }
 
     char* ret = bitmap_data;
-    bitmap_data += BMP_HEADER_SIZE + CONTROL_BYTES_SIZE;  // 4 bytes para registro de cambios realizados
+    char* og_bitmap_data = malloc(bmp_size);
+    memcpy(og_bitmap_data, bitmap_data, bmp_size);
+
+    bitmap_data += BMP_HEADER_SIZE;
+    struct lsbi_counters counters = {0};
 
     for (int i = 0; i < msg_size; i++) {
         for (int j = 0; j < 8; j++) {
-            // me fijo si el bit va a cambiar
-            int idx = (i * 8) + j;
-            int change = ((message[i] >> j) & 0x01) == (bitmap_data[idx] & 0x01) ? NOT_CHANGED : CHANGED;
-            bitmap_data[idx] = (bitmap_data[idx] & 0xFE) | ((message[i] >> j) & 0x01);
+            int idx = (i * 8) + j + 4;
+            bitmap_data[idx] = (bitmap_data[idx] & 0xFE) | ((message[i] >> (7 - j)) & 0x01);
 
-            // extraigo el 6to y 7mo bit
-            uint8_t bit6 = (bitmap_data[idx] >> 5) & 0x01;
-            uint8_t bit7 = (bitmap_data[idx] >> 6) & 0x01;
+            int changed = (og_bitmap_data[idx] & 0x01) != (bitmap_data[idx] & 0x01);
 
-            // actualizo los contadores
-            if (bit6 == 0 && bit7 == 0) {
-                counters->c00[change]++;
-            } else if (bit6 == 0 && bit7 == 1) {
-                counters->c01[change]++;
-            } else if (bit6 == 1 && bit7 == 0) {
-                counters->c10[change]++;
-            } else if (bit6 == 1 && bit7 == 1) {
-                counters->c11[change]++;
+            char bit2 = (bitmap_data[idx] >> 1) & 0x01;
+            char bit3 = (bitmap_data[idx] >> 2) & 0x01;
+
+            if (bit2 == 0) {
+                if (bit3 == 0)
+                    counters.c00[changed]++;
+                else if (bit3 == 1)
+                    counters.c10[changed]++;
+            } else if (bit2 == 1) {
+                if (bit3 == 0)
+                    counters.c01[changed]++;
+                else if (bit3 == 1)
+                    counters.c11[changed]++;
             }
         }
-        if (message[i] == '\0')
-            break;
     }
+    
+    free(og_bitmap_data);
 
-    bitmap_data = ret + BMP_HEADER_SIZE;
+    int must_change[4];  // 00, 01, 10, 11 -> un 1 si hay que invertir para ese par y 0 si no
+    must_change[0] = counters.c00[1] > counters.c00[0];
+    must_change[1] = counters.c01[1] > counters.c01[0];
+    must_change[2] = counters.c10[1] > counters.c10[0];
+    must_change[3] = counters.c11[1] > counters.c11[0];
 
-    if (counters->c00[CHANGED] > counters->c00[NOT_CHANGED]) {
-        counters->must_change[0] = 1;
-        // el ultimo bit del primer byte lo pongo en 1 porque modifico para 00
-        bitmap_data[0] |= 0x01;
-    } else {
-        // el ultimo bit del primer byte lo pongo en 0 porque no modifico para 00
-        bitmap_data[0] &= 0xFE;
+    for (int i = 0; i < 4; i++) {
+        bitmap_data[i] = (bitmap_data[i] & 0xFE) | must_change[i];
     }
-    if (counters->c01[CHANGED] > counters->c01[NOT_CHANGED]) {
-        counters->must_change[1] = 1;
-        // el ultimo bit del segundo byte lo pongo en 1 porque modifico para 01
-        bitmap_data[1] |= 0x01;
-    } else {
-        // el ultimo bit del segundo byte lo pongo en 0 porque no modifico para 01
-        bitmap_data[1] &= 0xFE;
-    }
-    if (counters->c10[CHANGED] > counters->c10[NOT_CHANGED]) {
-        counters->must_change[2] = 1;
-        // el ultimo bit del tercer byte lo pongo en 1 porque modifico para 10
-        bitmap_data[2] |= 0x01;
-    } else {
-        // el ultimo bit del tercer byte lo pongo en 0 porque no modifico para 10
-        bitmap_data[2] &= 0xFE;
-    }
-    if (counters->c11[CHANGED] > counters->c11[NOT_CHANGED]) {
-        counters->must_change[3] = 1;
-        // el ultimo bit del cuarto byte lo pongo en 1 porque modifico para 11
-        bitmap_data[3] |= 0x01;
-    } else {
-        // el ultimo bit del cuarto byte lo pongo en 0 porque no modifico para 11
-        bitmap_data[3] &= 0xFE;
-    }
-
-    bitmap_data = ret + BMP_HEADER_SIZE + CONTROL_BYTES_SIZE;
 
     for (int i = 0; i < msg_size; i++) {
         for (int j = 0; j < 8; j++) {
-            int idx = (i * 8) + j;
-
-            // extraigo el 6to y 7mo bit
-            uint8_t bit6 = (bitmap_data[idx] >> 5) & 0x01;
-            uint8_t bit7 = (bitmap_data[idx] >> 6) & 0x01;
-
-            // si tengo que cambiar el bit
-            if (counters->must_change[(bit6 << 1) | bit7] == 1) {
+            int idx = (i * 8) + j + 4;
+            if (must_change[(bitmap_data[idx] & 0x06) >> 1] == 1)
                 bitmap_data[idx] ^= 0x01;
-            }
         }
     }
-
-    free(counters);
 
     return ret;
 }
@@ -270,7 +232,7 @@ static char* _reveal_lsb4(char* bitmap_data, int bmp_size, char is_encrypted) {
     return realloc(message, position + 1);
 }
 
-static char* _reveal_lsbi(char* bitmap_data, int bmp_size) {
+static char* _reveal_lsbi(char* bitmap_data, int bmp_size, char is_encrypted) {
     char* original_bitmap_data = bitmap_data;
     int max_msg_size = (bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE) / 8;
 
@@ -305,8 +267,7 @@ static char* _reveal_lsbi(char* bitmap_data, int bmp_size) {
     memcpy(new_bitmap_data + BMP_HEADER_SIZE, original_bitmap_data + BMP_HEADER_SIZE + CONTROL_BYTES_SIZE,
            bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE);
 
-    // TODO: guatefac el flag de is_encrypted
-    char* hidden_message = _reveal_lsb1(new_bitmap_data, bmp_size - CONTROL_BYTES_SIZE, 0);
+    char* hidden_message = _reveal_lsb1(new_bitmap_data, bmp_size - CONTROL_BYTES_SIZE, is_encrypted);
     free(new_bitmap_data);
 
     return hidden_message;
