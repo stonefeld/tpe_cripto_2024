@@ -93,9 +93,16 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
     bitmap_data += BMP_HEADER_SIZE;
     struct lsbi_counters counters = {0};
 
+    unsigned int red_count = 0;
+
     for (int i = 0; i <= msg_size; i++) {
         for (int j = 0; j < 8; j++) {
-            int idx = (i * 8) + j + 4;
+            int idx = (i * 8) + j + 4 + red_count;
+            if (idx % 3 == 2) {
+                idx++;
+                red_count++;
+            }
+
             bitmap_data[idx] = (bitmap_data[idx] & 0xFE) | ((message[i] >> (7 - j)) & 0x01);
 
             int changed = (og_bitmap_data[idx] & 0x01) != (bitmap_data[idx] & 0x01);
@@ -119,7 +126,7 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
 
     free(og_bitmap_data);
 
-    int must_change[4];  // 00, 01, 10, 11 -> un 1 si hay que invertir para ese par y 0 si no
+    int must_change[4];
     must_change[0] = counters.c00[1] > counters.c00[0];
     must_change[1] = counters.c01[1] > counters.c01[0];
     must_change[2] = counters.c10[1] > counters.c10[0];

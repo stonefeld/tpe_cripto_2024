@@ -3,13 +3,6 @@
 
 #include "args.h"
 
-#define CONTROL_BYTES_SIZE 4 * 8
-
-enum lsbi_state {
-    CHANGED = 0,
-    NOT_CHANGED,
-};
-
 struct lsbi_counters {
     int c00[2];
     int c01[2];
