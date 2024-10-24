@@ -5,7 +5,7 @@
 #include <openssl/evp.h>
 #include <string.h>
 
-#define MAX_ENC_SIZE 1024 * 8
+#define MAX_ENC_SIZE 1024 * 1024
 
 static const EVP_CIPHER* _get_evp_algorithm(enum tipo_enc encryption_algo, enum tipo_cb mode);
 
@@ -24,8 +24,9 @@ char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
     unsigned char ivlen = EVP_CIPHER_iv_length(cipher);
 
     unsigned char concat[keylen + ivlen];
+    unsigned char salt[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-    PKCS5_PBKDF2_HMAC(password, strlen(password), NULL, 0, 10000, EVP_sha256(), keylen + ivlen, concat);
+    PKCS5_PBKDF2_HMAC(password, strlen(password), salt, sizeof(salt), 10000, EVP_sha256(), keylen + ivlen, concat);
 
     unsigned char* key = malloc(keylen);
     unsigned char* iv = malloc(ivlen);
@@ -57,7 +58,7 @@ char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
     free(key);
     free(iv);
 
-    return encrypted;
+    return realloc(encrypted, *encsize);
 }
 
 char* decrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, char* password, unsigned int size, unsigned int* decsize) {
@@ -75,8 +76,9 @@ char* decrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
     unsigned char ivlen = EVP_CIPHER_iv_length(cipher);
 
     unsigned char concat[keylen + ivlen];
+    unsigned char salt[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-    PKCS5_PBKDF2_HMAC(password, strlen(password), NULL, 0, 10000, EVP_sha256(), keylen + ivlen, concat);
+    PKCS5_PBKDF2_HMAC(password, strlen(password), salt, sizeof(salt), 10000, EVP_sha256(), keylen + ivlen, concat);
 
     unsigned char* key = malloc(keylen);
     unsigned char* iv = malloc(ivlen);
@@ -108,7 +110,7 @@ char* decrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
     free(key);
     free(iv);
 
-    return decrypted;
+    return realloc(decrypted, *decsize);
 }
 
 static const EVP_CIPHER* _get_evp_algorithm(enum tipo_enc encryption_algo, enum tipo_cb mode) {
@@ -118,7 +120,7 @@ static const EVP_CIPHER* _get_evp_algorithm(enum tipo_enc encryption_algo, enum 
         case AES128: {
             switch (mode) {
                 case ECB: return EVP_aes_128_ecb();
-                case CFB: return EVP_aes_128_cfb();
+                case CFB: return EVP_aes_128_cfb8();
                 case OFB: return EVP_aes_128_ofb();
                 case CBC: return EVP_aes_128_cbc();
             }
@@ -127,7 +129,7 @@ static const EVP_CIPHER* _get_evp_algorithm(enum tipo_enc encryption_algo, enum 
         case AES192: {
             switch (mode) {
                 case ECB: return EVP_aes_192_ecb();
-                case CFB: return EVP_aes_192_cfb();
+                case CFB: return EVP_aes_192_cfb8();
                 case OFB: return EVP_aes_192_ofb();
                 case CBC: return EVP_aes_192_cbc();
             }
@@ -136,7 +138,7 @@ static const EVP_CIPHER* _get_evp_algorithm(enum tipo_enc encryption_algo, enum 
         case AES256: {
             switch (mode) {
                 case ECB: return EVP_aes_256_ecb();
-                case CFB: return EVP_aes_256_cfb();
+                case CFB: return EVP_aes_256_cfb8();
                 case OFB: return EVP_aes_256_ofb();
                 case CBC: return EVP_aes_256_cbc();
             }
@@ -145,7 +147,7 @@ static const EVP_CIPHER* _get_evp_algorithm(enum tipo_enc encryption_algo, enum 
         case DES3: {
             switch (mode) {
                 case ECB: return EVP_des_ede3_ecb();
-                case CFB: return EVP_des_ede3_cfb();
+                case CFB: return EVP_des_ede3_cfb8();
                 case OFB: return EVP_des_ede3_ofb();
                 case CBC: return EVP_des_ede3_cbc();
             }
