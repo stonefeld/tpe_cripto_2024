@@ -46,7 +46,7 @@ struct args args_parse(int argc, char **argv) {
                 } else if (strcmp(optarg, "LSBI") == 0) {
                     steg_algo = LSBI;
                 } else {
-                    printf("Error: Algoritmo de esteganografía inválido.\n");
+                    printf("Error: Invalid steganography algorithm.\n");
                     exit(EXIT_FAILURE);
                 }
             } break;
@@ -61,7 +61,7 @@ struct args args_parse(int argc, char **argv) {
                 } else if (strcmp(optarg, "3des") == 0) {
                     encryption_algo = DES3;
                 } else {
-                    printf("Error: Algoritmo de cifrado inválido.\n");
+                    printf("Error: Invalid encryption algorithm.\n");
                     exit(EXIT_FAILURE);
                 }
             } break;
@@ -76,7 +76,7 @@ struct args args_parse(int argc, char **argv) {
                 } else if (strcmp(optarg, "cbc") == 0) {
                     mode = CBC;
                 } else {
-                    printf("Error: Modo de cifrado inválido.\n");
+                    printf("Error: Invalid cipher mode.\n");
                     exit(EXIT_FAILURE);
                 }
             } break;
@@ -86,7 +86,7 @@ struct args args_parse(int argc, char **argv) {
             } break;
 
             case '?': {
-                printf("Uso: %c <--embed || --extract> --in <file> -p <bitmapfile> --out <bitmapfile> --steg <LSB1 | "
+                printf("Use: %c <--embed || --extract> --in <file> -p <bitmapfile> --out <bitmapfile> --steg <LSB1 | "
                        "LSB4 | LSBI> [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [--pass "
                        "<password>]\n",
                        opt);
@@ -96,24 +96,24 @@ struct args args_parse(int argc, char **argv) {
     }
 
     if (!embed_flag && !extract_flag) {
-        printf("Error: Debe especificar --embed o --extract.\n");
+        printf("Error: Must specify --embed or --extract.\n");
         exit(EXIT_FAILURE);
     }
 
     if (embed_flag && extract_flag) {
-        printf("Error: No puede usar --embed y --extract al mismo tiempo.\n");
+        printf("Error: Cannot use --embed and --extract at the same time.\n");
         exit(EXIT_FAILURE);
     }
 
     if ((embed_flag && input_file == NULL) || bitmap_file == NULL || output_file == NULL || steg_algo < 0) {
         if (embed_flag && input_file == NULL)
-            printf("Error: Falta el archivo de entrada.\n");
+            printf("Error: Missing input file.\n");
         else if (bitmap_file == NULL)
-            printf("Error: Falta el archivo BMP portador.\n");
+            printf("Error: Missing carrier BMP file.\n");
         else if (output_file == NULL)
-            printf("Error: Falta el archivo BMP de salida.\n");
+            printf("Error: Missing output BMP file.\n");
         else if (steg_algo < 0)
-            printf("Error: Falta el algoritmo de esteganografía.\n");
+            printf("Error: Missing steganography algorithm.\n");
         exit(EXIT_FAILURE);
     }
 
