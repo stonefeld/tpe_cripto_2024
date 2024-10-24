@@ -16,7 +16,7 @@ void steg_embed(struct args args) {
         exit(EXIT_FAILURE);
     }
 
-    int size = utl_filesize(input_file) - 1;
+    int size = utl_filesize(input_file);
     char* ext = utl_fileext(args.input_file);
     int ext_len = strlen(ext);
     char* content = utl_filecontent(input_file, size);

@@ -16,3 +16,6 @@ jobs:
 
     - name: Build the project
       run: make all
+
+    - name: Test the project
+      run: make all && chmod +x ./test/test.sh && ./test/test.sh | wc -l | grep 0

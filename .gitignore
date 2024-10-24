@@ -6,3 +6,6 @@ bin/
 *.o
 *.vim
 compile_commands.json
+
+# Test files
+test/*/

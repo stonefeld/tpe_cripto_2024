@@ -136,9 +136,15 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
         bitmap_data[i] = (bitmap_data[i] & 0xFE) | must_change[i];
     }
 
+    red_count = 0;
+
     for (int i = 0; i <= msg_size; i++) {
         for (int j = 0; j < 8; j++) {
-            int idx = (i * 8) + j + 4;
+            int idx = (i * 8) + j + 4 + red_count;
+            if (idx % 3 == 2) {
+                idx++;
+                red_count++;
+            }
             if (must_change[(bitmap_data[idx] & 0x06) >> 1] == 1)
                 bitmap_data[idx] ^= 0x01;
         }
