@@ -93,7 +93,7 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
     bitmap_data += BMP_HEADER_SIZE;
     struct lsbi_counters counters = {0};
 
-    for (int i = 0; i < msg_size; i++) {
+    for (int i = 0; i <= msg_size; i++) {
         for (int j = 0; j < 8; j++) {
             int idx = (i * 8) + j + 4;
             bitmap_data[idx] = (bitmap_data[idx] & 0xFE) | ((message[i] >> (7 - j)) & 0x01);
@@ -116,7 +116,7 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
             }
         }
     }
-    
+
     free(og_bitmap_data);
 
     int must_change[4];  // 00, 01, 10, 11 -> un 1 si hay que invertir para ese par y 0 si no
@@ -129,7 +129,7 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
         bitmap_data[i] = (bitmap_data[i] & 0xFE) | must_change[i];
     }
 
-    for (int i = 0; i < msg_size; i++) {
+    for (int i = 0; i <= msg_size; i++) {
         for (int j = 0; j < 8; j++) {
             int idx = (i * 8) + j + 4;
             if (must_change[(bitmap_data[idx] & 0x06) >> 1] == 1)
@@ -233,43 +233,76 @@ static char* _reveal_lsb4(char* bitmap_data, int bmp_size, char is_encrypted) {
 }
 
 static char* _reveal_lsbi(char* bitmap_data, int bmp_size, char is_encrypted) {
-    char* original_bitmap_data = bitmap_data;
-    int max_msg_size = (bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE) / 8;
-
-    int must_invert[4] = {0};
+    int max_msg_size = (bmp_size - BMP_HEADER_SIZE) / 8 - 4;
+    char* message = malloc(max_msg_size);
 
     bitmap_data += BMP_HEADER_SIZE;
+    int must_change[4];
+    for (int i = 0; i < 4; i++)
+        must_change[i] = (bitmap_data[i] & 0x01);
 
-    for (int i = 0; i < 4; i++) {
-        must_invert[i] = (bitmap_data[i] & 0x01) == 0x01 ? 1 : 0;
+    unsigned int size = 0;
+    unsigned int position;
+    unsigned char byte = '\0';
+
+    unsigned int red_count = 0;
+
+    for (position = 0; position < 4; position++) {
+        byte = 0;
+        for (int j = 0; j < 8; j++) {
+            int idx = (position * 8) + j + 4 + red_count;
+            if (idx % 3 == 2) {
+                idx++;
+                red_count++;
+            }
+
+            char bit = (bitmap_data[idx] & 0x01);
+            if (must_change[(bitmap_data[idx] & 0x06) >> 1] == 1)
+                bit ^= 0x01;
+            byte |= bit << (7 - j);
+        }
+        message[position] = byte;
+        size |= byte << (24 - (position * 8));
     }
 
-    bitmap_data += CONTROL_BYTES_SIZE;
-
-    for (int i = 0; i < max_msg_size; i++) {
+    for (; position < size + 4; position++) {
+        byte = 0;
         for (int j = 0; j < 8; j++) {
-            int idx = (i * 8) + j;
-
-            // extraigo el 6to y 7mo bit
-            uint8_t bit6 = (bitmap_data[idx] >> 5) & 0x01;
-            uint8_t bit7 = (bitmap_data[idx] >> 6) & 0x01;
-
-            // si tengo que cambiar el bit
-            if (must_invert[(bit6 << 1) | bit7] == 1) {
-                bitmap_data[idx] ^= 0x01;
+            int idx = (position * 8) + j + 4 + red_count;
+            if (idx % 3 == 2) {
+                idx++;
+                red_count++;
             }
+
+            char bit = (bitmap_data[idx] & 0x01);
+            if (must_change[(bitmap_data[idx] & 0x06) >> 1] == 1)
+                bit ^= 0x01;
+            byte |= bit << (7 - j);
+        }
+        message[position] = byte;
+    }
+
+    if (!is_encrypted) {
+        for (;; position++) {
+            byte = 0;
+            for (int j = 0; j < 8; j++) {
+                int idx = (position * 8) + j + 4 + red_count;
+                if (idx % 3 == 2) {
+                    idx++;
+                    red_count++;
+                }
+
+                char bit = (bitmap_data[idx] & 0x01);
+                if (must_change[(bitmap_data[idx] & 0x06) >> 1] == 1)
+                    bit ^= 0x01;
+                byte |= bit << (7 - j);
+            }
+            message[position] = byte;
+            if (byte == '\0')
+                break;
         }
     }
 
-    // genero el nuevo char* que no tiene los 4 bytes de control
-    char* new_bitmap_data = malloc(bmp_size - CONTROL_BYTES_SIZE);
-    memcpy(new_bitmap_data, original_bitmap_data, BMP_HEADER_SIZE);
-    memcpy(new_bitmap_data + BMP_HEADER_SIZE, original_bitmap_data + BMP_HEADER_SIZE + CONTROL_BYTES_SIZE,
-           bmp_size - BMP_HEADER_SIZE - CONTROL_BYTES_SIZE);
-
-    char* hidden_message = _reveal_lsb1(new_bitmap_data, bmp_size - CONTROL_BYTES_SIZE, is_encrypted);
-    free(new_bitmap_data);
-
-    return hidden_message;
+    return realloc(message, position + 1);
 }
 /* END EXTRACT FUNCTIONS */
