@@ -23,3 +23,9 @@ char *utl_filecontent(FILE *f, int size) {
     fread(content, 1, size, f);
     return content;
 }
+
+struct bmp_header utl_bmpheader(char *bitmap_data) {
+    struct bmp_header header;
+    memcpy(&header, bitmap_data, sizeof(struct bmp_header));
+    return header;
+}

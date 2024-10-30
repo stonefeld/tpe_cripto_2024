@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bmp.h"
 #include "cipher.h"
 #include "obfuscate.h"
 #include "utils.h"
@@ -36,7 +35,7 @@ void steg_embed(struct args args) {
     fclose(input_file);
 
     if (args.password) {
-        char* encrypted_message = encrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
+        char* encrypted_message = cip_encrypt(message, args.encryption_algo, args.mode, args.password, len, &len);
         if (encrypted_message) {
             free(message);
             message = malloc(len + 4);
@@ -62,7 +61,7 @@ void steg_embed(struct args args) {
 
     int bmp_size = utl_filesize(bitmap_file);
     char* bitmap_data = utl_filecontent(bitmap_file, bmp_size);
-    struct bmp_header bitmap_header = bmp_get_header(bitmap_data);
+    struct bmp_header bitmap_header = utl_bmpheader(bitmap_data);
 
     fclose(bitmap_file);
 
@@ -104,7 +103,7 @@ void steg_extract(struct args args) {
 
     int bmp_size = utl_filesize(bitmap_file);
     char* bitmap_data = utl_filecontent(bitmap_file, bmp_size);
-    struct bmp_header bitmap_header = bmp_get_header(bitmap_data);
+    struct bmp_header bitmap_header = utl_bmpheader(bitmap_data);
 
     fclose(bitmap_file);
 
@@ -128,7 +127,7 @@ void steg_extract(struct args args) {
         size |= (unsigned char)message[i] << (24 - (i * 8));
 
     if (args.password) {
-        char* decrypted_message = decrypt(message + 4, args.encryption_algo, args.mode, args.password, size, &size);
+        char* decrypted_message = cip_decrypt(message + 4, args.encryption_algo, args.mode, args.password, size, &size);
         if (decrypted_message) {
             free(message);
             message = decrypted_message;

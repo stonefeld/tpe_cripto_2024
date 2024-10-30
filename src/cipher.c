@@ -5,11 +5,11 @@
 #include <openssl/evp.h>
 #include <string.h>
 
-#define MAX_ENC_SIZE 1024 * 1024
+#define EXTRA_PADDING 1024
 
 static const EVP_CIPHER* _get_evp_algorithm(enum tipo_enc encryption_algo, enum tipo_cb mode);
 
-char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, char* password, unsigned int size, unsigned int* encsize) {
+char* cip_encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, char* password, unsigned int size, unsigned int* encsize) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx)
         return NULL;
@@ -34,7 +34,7 @@ char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
     strncpy((char*)key, (char*)concat, keylen);
     strncpy((char*)iv, (char*)concat + keylen, ivlen);
 
-    char* encrypted = calloc(1, MAX_ENC_SIZE);
+    char* encrypted = calloc(1, size + EXTRA_PADDING);
     int outl = 0, templ = 0;
 
     if (EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv) != 1) {
@@ -61,7 +61,7 @@ char* encrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
     return realloc(encrypted, *encsize);
 }
 
-char* decrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, char* password, unsigned int size, unsigned int* decsize) {
+char* cip_decrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, char* password, unsigned int size, unsigned int* decsize) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx)
         return NULL;
@@ -86,7 +86,7 @@ char* decrypt(char* message, enum tipo_enc encryption_algo, enum tipo_cb mode, c
     strncpy((char*)key, (char*)concat, keylen);
     strncpy((char*)iv, (char*)concat + keylen, ivlen);
 
-    char* decrypted = calloc(1, MAX_ENC_SIZE);
+    char* decrypted = calloc(1, size);
     int outl = 0, templ = 0;
 
     if (EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv) != 1) {

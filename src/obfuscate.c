@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bmp.h"
+#include "utils.h"
 
 static char* _hide_lsb1(char* message, int msg_size, char* bitmap_data, int bmp_size);
 static char* _hide_lsb4(char* message, int msg_size, char* bitmap_data, int bmp_size);
@@ -132,9 +132,8 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
     must_change[2] = counters.c10[1] > counters.c10[0];
     must_change[3] = counters.c11[1] > counters.c11[0];
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++)
         bitmap_data[i] = (bitmap_data[i] & 0xFE) | must_change[i];
-    }
 
     red_count = 0;
 
@@ -156,7 +155,7 @@ static char* _hide_lsbi(char* message, int msg_size, char* bitmap_data, int bmp_
 
 /* START EXTRACT FUNCTIONS */
 static char* _reveal_lsb1(char* bitmap_data, int bmp_size, char is_encrypted) {
-    int max_msg_size = (bmp_size - BMP_HEADER_SIZE) / 8;
+    unsigned int max_msg_size = (bmp_size - BMP_HEADER_SIZE) / 8;
     char* message = malloc(max_msg_size);
 
     bitmap_data += BMP_HEADER_SIZE;
@@ -173,6 +172,12 @@ static char* _reveal_lsb1(char* bitmap_data, int bmp_size, char is_encrypted) {
         }
         message[position] = byte;
         size |= byte << (24 - (position * 8));
+    }
+
+    if (size > max_msg_size) {
+        printf("Error: Message size is bigger than BMP file.\n");
+        free(message);
+        return NULL;
     }
 
     for (; position < size + 4; position++) {
@@ -201,7 +206,7 @@ static char* _reveal_lsb1(char* bitmap_data, int bmp_size, char is_encrypted) {
 }
 
 static char* _reveal_lsb4(char* bitmap_data, int bmp_size, char is_encrypted) {
-    int max_msg_size = (bmp_size - BMP_HEADER_SIZE) / 2;
+    unsigned int max_msg_size = (bmp_size - BMP_HEADER_SIZE) / 2;
     char* message = malloc(max_msg_size);
 
     bitmap_data += BMP_HEADER_SIZE;
@@ -218,6 +223,12 @@ static char* _reveal_lsb4(char* bitmap_data, int bmp_size, char is_encrypted) {
         }
         message[position] = byte;
         size |= byte << (24 - (position * 8));
+    }
+
+    if (size > max_msg_size) {
+        printf("Error: Message size is bigger than BMP file.\n");
+        free(message);
+        return NULL;
     }
 
     for (; position < size + 4; position++) {
@@ -246,7 +257,7 @@ static char* _reveal_lsb4(char* bitmap_data, int bmp_size, char is_encrypted) {
 }
 
 static char* _reveal_lsbi(char* bitmap_data, int bmp_size, char is_encrypted) {
-    int max_msg_size = (bmp_size - BMP_HEADER_SIZE) / 8 - 4;
+    unsigned int max_msg_size = (bmp_size - BMP_HEADER_SIZE) / 8 - 4;
     char* message = malloc(max_msg_size);
 
     bitmap_data += BMP_HEADER_SIZE;
@@ -276,6 +287,12 @@ static char* _reveal_lsbi(char* bitmap_data, int bmp_size, char is_encrypted) {
         }
         message[position] = byte;
         size |= byte << (24 - (position * 8));
+    }
+
+    if (size > max_msg_size) {
+        printf("Error: Message size is bigger than BMP file.\n");
+        free(message);
+        return NULL;
     }
 
     for (; position < size + 4; position++) {

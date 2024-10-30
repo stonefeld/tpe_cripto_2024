@@ -5,14 +5,9 @@
 
 int main(int argc, char **argv) {
     struct args args = args_parse(argc, argv);
-
-    if (args.action == EMBED) {
-        steg_embed(args);
-    } else if (args.action == EXTRACT) {
-        steg_extract(args);
-    } else {
-        printf("No operation specified\n");
+    switch (args.action) {
+        case EMBED: steg_embed(args); break;
+        case EXTRACT: steg_extract(args); break;
+        default: printf("Error: No operation specified\n"); break;
     }
-
-    return 0;
 }

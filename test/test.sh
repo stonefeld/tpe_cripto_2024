@@ -14,7 +14,7 @@ rm -rf inputs embeds extracts
 for steg in $stegs; do
     input="inputs/test_${steg}.txt"
     embed="embeds/test_${steg}.bmp"
-    printf "Hola mundo\nste es un mensaje oculto en una imagen BMP usando el método $steg\n" > $input
+    printf "Hola mundo\nEste es un mensaje oculto en una imagen BMP usando el método $steg\n" > $input
     ../bin/stegobmp --embed --in $input -p portador.bmp --out $embed --steg $steg
 done
 
@@ -23,7 +23,7 @@ for steg in $stegs; do
         for block in $blocks; do
             input="inputs/test_${steg}_${algorithm}_${block}.txt"
             embed="embeds/test_${steg}_${algorithm}_${block}.bmp"
-            printf "Hola mundo\nste es un mensaje oculto en una imagen BMP usando el método $steg, el algoritmo $algorithm y el modo $block\n" > $input
+            printf "Hola mundo\nEste es un mensaje oculto en una imagen BMP usando el método $steg, el algoritmo $algorithm y el modo $block\n" > $input
             ../bin/stegobmp --embed --in $input -p portador.bmp --out $embed --steg $steg -a $algorithm -m $block --pass margarita
         done
     done
